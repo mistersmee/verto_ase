@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, constr, field_validator
 from typing import List, Optional
-from sqlmodel import SQLModel, Field, create_engine, Session
+from sqlmodel import SQLModel, Field, create_engine, Session, select
 from enum import Enum
 
 DATABASE_URL = "sqlite:///./quiz.db"
@@ -58,11 +58,20 @@ class QuestionCreate(BaseModel):
                 raise ValueError("Text questions must not include options")
         return v
 
+class PublicOption(BaseModel):
+    id: int
+    text: str
+
+class PublicQuestion(BaseModel):
+    id: int
+    text: str
+    qtype: QuestionType
+    options: Optional[List[PublicOption]] = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     SQLModel.metadata.create_all(engine)
     yield
-
 
 app = FastAPI(lifespan=lifespan, title="Verto ASE Challenge")
 
@@ -99,6 +108,23 @@ def add_question(quiz_id: int, payload: QuestionCreate):
             "qtype": question.qtype,
             "options": created_options
         }
+
+@app.get("/quizzes/{quiz_id}/questions", response_model=List[PublicQuestion])
+def get_questions(quiz_id: int):
+    with Session(engine) as session:
+        quiz = session.get(Quiz, quiz_id)
+        if not quiz:
+            raise HTTPException(status_code=404, detail="Quiz not found")
+        questions = session.exec(select(Question).where(Question.quiz_id == quiz_id)).all()
+        output = []
+        for q in questions:
+            opts = session.exec(select(Option).where(Option.question_id == q.id)).all()
+            if q.qtype == QuestionType.text:
+                output.append({"id": q.id, "text": q.text, "qtype": q.qtype, "options": None})
+            else:
+                public_opts = [{"id": o.id, "text": o.text} for o in opts]
+                output.append({"id": q.id, "text": q.text, "qtype": q.qtype, "options": public_opts})
+        return output
 
 # Simple health endpoint
 @app.get("/health")
