@@ -126,6 +126,17 @@ def get_questions(quiz_id: int):
                 output.append({"id": q.id, "text": q.text, "qtype": q.qtype, "options": public_opts})
         return output
 
+@app.get("/quizzes")
+def list_quizzes():
+    with Session(engine) as session:
+        quizzes = session.exec(select(Quiz)).all()
+        result = []
+        for q in quizzes:
+            ques = session.exec(select(Question).where(Question.quiz_id == q.id)).all()
+            count = len(ques)
+            result.append({"id": q.id, "title": q.title, "question_count": count})
+        return result
+
 # Simple health endpoint
 @app.get("/health")
 def health():
