@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, constr, field_validator
 from typing import List, Optional
+from sqlalchemy.orm.interfaces import ORMOption
 from sqlmodel import SQLModel, Field, create_engine, Session, select
 from enum import Enum
 
@@ -133,9 +134,40 @@ def list_quizzes():
         result = []
         for q in quizzes:
             ques = session.exec(select(Question).where(Question.quiz_id == q.id)).all()
-            count = len(ques)
-            result.append({"id": q.id, "title": q.title, "question_count": count})
+            result.append({"id": q.id, "title": q.title, "question_count": len(ques)})
         return result
+
+@app.post("/quizzes/{quiz_id}/submit")
+def submit_answers(quiz_id: int, submission: dict):
+    with Session(engine) as session:
+        quiz = session.get(Quiz, quiz_id)
+        if not quiz:
+            raise HTTPException(status_code=404, detail="Quiz not found")
+        answers = submission.get("answers", [])
+        if not isinstance(answers, list):
+            raise HTTPException(status_code=400, detail="Answers must be a list")
+
+        ques = session.exec(select(Question).where(Question.quiz_id == quiz.id)).all()
+        total = len(ques)
+        score = 0
+
+        for ans in answers:
+            q_id = ans.get("question_id")
+            selected_option_ids = ans.get("selected_option_ids", [])
+            question = session.get(Question, q_id)
+            if not question or question.quiz_id != quiz_id:
+                continue
+
+            if question.qtype in ("single", "multiple"):
+                correct_options = session.exec(select(Option).where(Option.question_id == q_id, Option.is_correct == True)).all()
+                correct_ids = sorted([o.id for o in correct_options])
+                if selected_option_ids == correct_ids[0]:
+                    score += 1
+            elif question.qtype == "text":
+                if ans.get("text_answer") and len(ans.get("text_answer")) <= 300:
+                    score += 1
+
+        return {"score": score, "total": total}
 
 # Simple health endpoint
 @app.get("/health")
