@@ -161,15 +161,27 @@ def submit_answers(quiz_id: int, submission: dict):
             if question.qtype == "single":
                 correct_options = session.exec(select(Option).where(Option.question_id == q_id, Option.is_correct == True)).all()
                 correct_ids = sorted([o.id for o in correct_options])
+
                 if selected_option_ids == correct_ids[0]:
                     score += 1
+
             elif question.qtype == "text":
                 if ans.get("text_answer") and len(ans.get("text_answer")) <= 300:
                     score += 1
+
             elif question.qtype == "multiple":
+
+                if isinstance(selected_option_ids, int):
+                    selected_option_ids = [selected_option_ids]
+
+                selected_option_ids = set(selected_option_ids)
+
                 correct_options = session.exec(select(Option).where(Option.question_id == q_id, Option.is_correct == True)).all()
                 correct_ids = sorted([o.id for o in correct_options])
-                if selected_option_ids == correct_ids:
+
+                correct_ids = set(selected_option_ids)
+
+                if selected_option_ids.issubset(correct_ids):
                     score += 1
 
         return {"score": score, "total": total}
