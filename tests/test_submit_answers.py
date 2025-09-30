@@ -1,22 +1,18 @@
-from fastapi.routing import websocket_session
-from httpx import options
+import sys, os
 import pytest
 from fastapi.testclient import TestClient
-import sys, os
-
-from sqlalchemy.sql.operators import op
-from sqlalchemy.util import wrap_callable
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from app import app, engine, SQLModel
+import app
+from database import engine, init_db, SQLModel
 
-client = TestClient(app)
+client = TestClient(app.app)
 
 @pytest.fixture(autouse=True)
 def setup_and_teardown_db():
     SQLModel.metadata.drop_all(engine)
-    SQLModel.metadata.create_all(engine)
+    init_db()
     yield
     SQLModel.metadata.drop_all(engine)
 
