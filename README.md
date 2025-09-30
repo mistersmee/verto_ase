@@ -51,3 +51,7 @@ The project includes a test suite built using `PyTest`, so to run that, just inp
 Even though the challenge mentioned JavaScript/TypeScript was preferred, I went with Python, because it is the programming language I am most comfortable with. I am familiar with JavaScript, and I have begun to learn TypeScript, but Python is still the language I have the most familiarity with.
 
 I chose FastAPI, because I wanted to use this challenge as an opportunity to try something new, most of the projects I've done have been either in Flask or Django, and I had heard good things about FastAPI, so I tried it here.
+
+## Loom explainer link:
+
+[https://www.loom.com/share/140b484117074b51b6795794fc18636b](https://www.loom.com/share/140b484117074b51b6795794fc18636b)
